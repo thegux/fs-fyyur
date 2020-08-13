@@ -5,9 +5,10 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, ARRAY, String, Integer, ForeignKey, Numeric, Boolean
 import logging
 from flask_migrate import Migrate
 from logging import Formatter, FileHandler
@@ -41,18 +42,18 @@ Shows = db.Table('Shows',
 
 class Venue(db.Model):
     __tablename__ = 'Venue'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String(120)))
-    website = db.Column(db.String(500))
-    seeking_talent = db.Column(db.Boolean(), default=False)
-    seeking_description = db.Column(db.String(1000))
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    city = Column(String(120))
+    state = Column(String(120))
+    address = Column(String(120))
+    phone = Column(String(120))
+    image_link = Column(String(500))
+    facebook_link = Column(String(120))
+    genres = Column(ARRAY(String(120)))
+    website = Column(String(500))
+    seeking_talent = Column(Boolean(), default=False)
+    seeking_description = Column(String(1000))
     shows = db.relationship('Artist', secondary=Shows,
                             backref='Artist', lazy=True)
 
@@ -61,17 +62,17 @@ class Venue(db.Model):
 
 class Artist(db.Model):
     __tablename__ = 'Artist'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String(120)))
-    image_link = db.Column(db.String(2000))
-    facebook_link = db.Column(db.String(120))
-    website = db.Column(db.String(500))
-    seeking_venue = db.Column(db.Boolean(), default=False)
-    seeking_description = db.Column(db.String(1000))
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    city = Column(String(120))
+    state = Column(String(120))
+    phone = Column(String(120))
+    genres = Column(ARRAY(String(120)))
+    image_link = Column(String(2000))
+    facebook_link = Column(String(120))
+    website = Column(String(500))
+    seeking_venue = Column(Boolean(), default=False)
+    seeking_description = Column(String(1000))
     shows = db.relationship('Venue', secondary=Shows,
                             backref='Venue', lazy=True)
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
@@ -265,20 +266,40 @@ def create_venue_submission():
     error = False
     body = {}
     # TODO: insert form data as a new Venue record in the db, instead
-    try: 
-        venue_form = request.form
-        print(venue_form)
-        new_venue = Venue(name = form['name'], city = form['city'], state = form['state'])
+    try:
+        form = request.form
+        name=form['name']
+        city=form['city']
+        address=form['address']
+        state=form['state']
+        phone=form['phone']
+        genres = request.form.getlist('genres')
+        facebook_link=form['facebook_link']
+        image_link=form['image_link']
+        new_venue = Venue(name=name, city=city, state=state, phone=phone, genres=genres, address=address, facebook_link=facebook_link, image_link=image_link)
+        db.session.add(new_venue)
+        db.session.commit()
+
         flash('Venue ' + request.form['name'] + ' was successfully listed!')
     # TODO: modify data to be the data object returned from db insertion
     except:
-        pass
+        error = True
+        db.session.rollback()
+        print(sys.exc_info())
+    finally:
+        db.session.close()
+    if(error):
+        flash('An error occurred. Venue ' + request.form['name'] + ' could not be listed.')
+        abort(400)
+    else:
+        flash('The Venue was successfully created')
+        return render_template('pages/home.html')
     # on successful db insert, flash success
-    
+
     # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
+    # e.g., 
     # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-    return render_template('pages/home.html')
+    
 
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
@@ -295,7 +316,7 @@ def delete_venue(venue_id):
 @app.route('/artists')
 def artists():
     # TODO: replace with real data returned from querying the database
-    data = [{
+    data= [{
         "id": 4,
         "name": "Guns N Petals",
     }, {
@@ -313,7 +334,7 @@ def search_artists():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
     # search for "band" should return "The Wild Sax Band".
-    response = {
+    response= {
         "count": 1,
         "data": [{
             "id": 4,
@@ -577,7 +598,7 @@ if not app.debug:
 
 # Default port:
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug = True)
 
 # Or specify port manually:
 '''
