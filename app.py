@@ -113,7 +113,7 @@ def venues():
             venue_details.append({
                 'id': ven.id,
                 'name': ven.name,
-                'num_upcoming_shows': len(db.session.query(Shows).filter(Shows.venue_id == ven.id).filter(Shows.start_time > datetime.utcnow()).all()) if len(db.session.query(Shows).all()) > 0 else 0
+                'num_upcoming_shows': len(Shows.query.filter(Shows.venue_id == ven.id).filter(Shows.start_time > datetime.utcnow()).all()) if len(Shows.query.all()) > 0 else 0
             })
         aux_venues.append(
             {'city': venue.city, 'state': venue.state, "venues": venue_details})
